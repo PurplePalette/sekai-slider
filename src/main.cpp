@@ -1,5 +1,6 @@
 #include <Adafruit_NeoPixel.h>
 #include "Adafruit_MPR121.h"
+#include "HID-Project.h"
 #ifdef __AVR__
 #include <avr/power.h>
 #endif
@@ -19,6 +20,8 @@ Adafruit_MPR121 cap = Adafruit_MPR121();
 const uint32_t COLOR_TOUCH = pixels.Color(55, 95, 125);  // AQUA
 const uint32_t COLOR_RELEASE = pixels.Color(100, 0, 100); // VIOLET
 
+char keys[12] = {'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'z', 'x', 'c'};
+
 void bright(uint16_t touched);
 uint32_t getColor(bool state);
 
@@ -26,6 +29,8 @@ void setup()
 {
   Serial.begin(SERIAL_BAUD);
   Serial.println("Adafruit MPR121 Capacitive Touch sensor test");
+  NKROKeyboard.begin();
+
 
   // Default address is 0x5A, if tied to 3.3V its 0x5B
   // If tied to SDA its 0x5C and if SCL then 0x5D
@@ -34,6 +39,10 @@ void setup()
     Serial.println("MPR121 not found, check wiring?");
     while (1);
   }
+  cap.setThresholds(2, 6);
+  cap.writeRegister(MPR121_DEBOUNCE, 0x25);
+  cap.writeRegister(MPR121_CONFIG1, 0x30);
+  cap.writeRegister(MPR121_CONFIG2, 0x20);
   Serial.println("MPR121 found!");
   pixels.begin();
 }
@@ -42,11 +51,18 @@ void loop()
 {
   uint16_t current_touched = cap.touched();
 
-  for(uint8_t i = 0; i < 12; i++)
-    Serial.print(bool(current_touched & _BV(i)));
+  for(uint8_t i = 0; i < 12; i++){
+    bool state = bool(current_touched & _BV(i));
+    if(state)
+      NKROKeyboard.add(keys[i]);
+    else
+      NKROKeyboard.remove(keys[i]);
+    Serial.print(state);
+  }
   Serial.print("\r\n");
 
   bright(current_touched);
+  NKROKeyboard.send();
   delay(5);
 }
 
