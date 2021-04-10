@@ -1,4 +1,4 @@
-#include "Touch.h"
+#include "MultiTouch.h"
 
 #if defined(_USING_HID)
 
@@ -127,7 +127,7 @@ typedef struct Finger {
 Finger fingers[CONTACT_COUNT_MAXIMUM];
 
 
-Touch_::Touch_() {
+MultiTouch_::MultiTouch_() {
   static HIDSubDescriptor node(_hidReportDescriptor, sizeof(_hidReportDescriptor));
   HID().AppendDescriptor(&node);
 
@@ -138,14 +138,14 @@ Touch_::Touch_() {
   }
 }
 
-void Touch_::begin(void) {
+void MultiTouch_::begin(void) {
 }
 
-void Touch_::end(void) {
+void MultiTouch_::end(void) {
 }
 
 
-void Touch_::send(uint8_t identifier, uint8_t touch, int16_t x, int16_t y) {
+void MultiTouch_::send(uint8_t identifier, uint8_t touch, int16_t x, int16_t y) {
   // calculate current contact count
   uint8_t contact = 0;
   
@@ -169,7 +169,7 @@ void Touch_::send(uint8_t identifier, uint8_t touch, int16_t x, int16_t y) {
 }
 
 
-void Touch_::moveFingerTo(uint8_t identifier, int16_t x, int16_t y) {
+void MultiTouch_::moveFingerTo(uint8_t identifier, int16_t x, int16_t y) {
   // change finger record
   fingers[identifier].contact = 1;
   fingers[identifier].x = x;
@@ -179,7 +179,7 @@ void Touch_::moveFingerTo(uint8_t identifier, int16_t x, int16_t y) {
   send(identifier, 1, x, y);
 }
 
-void Touch_::releaseFinger(uint8_t identifier) {
+void MultiTouch_::releaseFinger(uint8_t identifier) {
   // change finger record
   fingers[identifier].contact = 0;
   fingers[identifier].x = 0;
@@ -189,6 +189,6 @@ void Touch_::releaseFinger(uint8_t identifier) {
   send(identifier, 0, 0, 0);
 }
 
-Touch_ Touch;
+MultiTouch_ MultiTouch;
 
 #endif
