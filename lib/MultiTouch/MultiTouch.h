@@ -19,7 +19,7 @@ public:
   void moveFingerTo(uint8_t finger, int16_t x, int16_t y);
   void releaseFinger(uint8_t finger);
 };
-extern MultiTouch_ MultiTouch;
+extern MultiTouch_ multiTouch;
 
 #endif
 #endif

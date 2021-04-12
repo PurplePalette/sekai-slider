@@ -1,6 +1,8 @@
 #include <Adafruit_NeoPixel.h>
 #include "Adafruit_MPR121.h"
-#include "HID-Project.h"
+#include "MultiTouch.h"
+#include <stdio.h>
+#include <stdlib.h>
 #ifdef __AVR__
 #include <avr/power.h>
 #endif
@@ -9,8 +11,12 @@
 #endif
 
 const uint32_t SERIAL_BAUD = 115200;
+const uint8_t TOUCH_PAD_NUM = 12;
 const uint8_t NEO_PIXEL_PIN = 9;
 const uint8_t NUM_PIXELS = 73;
+const uint32_t TOUCH_SCREEN_MIN_X = 1000;
+const uint32_t TOUCH_SCREEN_MAX_X = 9000;
+const uint32_t TOUCH_SCREEN_Y = 8000;
 
 Adafruit_NeoPixel pixels(NUM_PIXELS, NEO_PIXEL_PIN, NEO_GRB + NEO_KHZ800);
 Adafruit_MPR121 cap = Adafruit_MPR121();
@@ -20,16 +26,55 @@ Adafruit_MPR121 cap = Adafruit_MPR121();
 const uint32_t COLOR_TOUCH = pixels.Color(35, 75, 105);  // AQUA
 const uint32_t COLOR_RELEASE = pixels.Color(50, 0, 50); // VIOLET
 
-char keys[12] = {'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'z', 'x', 'c'};
-
 void bright(uint16_t touched);
-uint32_t getColor(bool state);
+uint32_t getColor(uint16_t state);
+float mapFloat(float value, float fromLow, float fromHigh, float toLow, float toHigh);
+
+enum TOUCH_STATE{
+  UP,
+  DOWN,
+  MOVING,
+};
+
+struct Touch_ {
+  int8_t identifier; //-1: not used this identifier, 0~3:contact identifier
+  uint8_t side_start;
+  uint8_t side_end;
+  float center;
+  uint16_t bit_pattern;
+  uint16_t bit_pattern_prev;
+  TOUCH_STATE state; //0:touch down 1:moving 2:touch up
+};
+typedef struct Touch_ Touch;
+
+const uint8_t TOUCH_MAX = TOUCH_PAD_NUM / 2;
+Touch prevTouch[TOUCH_MAX];
+Touch curTouch[TOUCH_MAX];
+uint8_t prev_touch_count = 0;
+uint8_t cur_touch_count = 0;
+uint8_t is_touch_processing = 0;
+uint8_t using_identifier[TOUCH_MAX];
 
 void setup()
 {
+  for(uint8_t i = 0; i < TOUCH_MAX; i++){
+    prevTouch[i].identifier = -1;
+    prevTouch[i].side_start = 0;
+    prevTouch[i].side_end = 0;
+    prevTouch[i].center = 0;
+    prevTouch[i].bit_pattern = 0;
+    prevTouch[i].bit_pattern_prev = 0;
+    prevTouch[i].state = TOUCH_STATE::UP;
+    curTouch[i].identifier = -1;
+    curTouch[i].side_start = 0;
+    curTouch[i].side_end = 0;
+    curTouch[i].center = 0;
+    curTouch[i].bit_pattern = 0;
+    curTouch[i].bit_pattern_prev = 0;
+    curTouch[i].state = TOUCH_STATE::UP;
+  }
   Serial.begin(SERIAL_BAUD);
   Serial.println("Adafruit MPR121 Capacitive Touch sensor test");
-  NKROKeyboard.begin();
 
 
   // Default address is 0x5A, if tied to 3.3V its 0x5B
@@ -45,30 +90,140 @@ void setup()
   cap.writeRegister(MPR121_CONFIG2, 0x20);
   Serial.println("MPR121 found!");
   pixels.begin();
+  multiTouch.begin();
 }
 
 void loop()
 {
   uint16_t current_touched = cap.touched();
-
-  for(uint8_t i = 0; i < 12; i++){
+  cur_touch_count = 0;
+  for(uint8_t i = 0; i < TOUCH_PAD_NUM; i++){
     bool state = bool(current_touched & _BV(i));
-    if(state)
-      NKROKeyboard.add(keys[i]);
-    else
-      NKROKeyboard.remove(keys[i]);
+    if(state && !is_touch_processing){
+      is_touch_processing = 1;
+      curTouch[cur_touch_count].side_start = i;
+      curTouch[cur_touch_count].side_end = i;
+      is_touch_processing = 1;
+    } else if(state && is_touch_processing){
+      curTouch[cur_touch_count].side_end = i;
+    } else if( (!state && is_touch_processing) || (state && i == (TOUCH_PAD_NUM-1)) ){
+      is_touch_processing = 0;
+      curTouch[cur_touch_count].center = float(curTouch[cur_touch_count].side_start + curTouch[cur_touch_count].side_end)/2;
+      uint8_t cur_bit_num = curTouch[cur_touch_count].side_end - curTouch[cur_touch_count].side_start + 1;
+      curTouch[cur_touch_count].bit_pattern = ( ( 1 << cur_bit_num) -1 ) << curTouch[cur_touch_count].side_start;
+      uint8_t prev_bit_num = curTouch[cur_touch_count].side_end - curTouch[cur_touch_count].side_start + 3;
+      curTouch[cur_touch_count].bit_pattern_prev = ( (1 << prev_bit_num) - 1)  << max((curTouch[cur_touch_count].side_start - 1), 0);
+      cur_touch_count += 1;
+    }
+    if(state && i == (TOUCH_PAD_NUM-1)){
+      curTouch[cur_touch_count].side_end = i;
+      is_touch_processing = 0;
+      curTouch[cur_touch_count].center = float(curTouch[cur_touch_count].side_start + curTouch[cur_touch_count].side_end)/2;
+      uint8_t cur_bit_num = curTouch[cur_touch_count].side_end - curTouch[cur_touch_count].side_start + 1;
+      curTouch[cur_touch_count].bit_pattern = ( ( 1 << cur_bit_num) -1 ) << curTouch[cur_touch_count].side_start;
+      uint8_t prev_bit_num = curTouch[cur_touch_count].side_end - curTouch[cur_touch_count].side_start + 3;
+      curTouch[cur_touch_count].bit_pattern_prev = ( (1 << prev_bit_num) - 1)  << max((curTouch[cur_touch_count].side_start - 1), 0);
+      cur_touch_count += 1;
+    }
+    //Serial.print(state);
+  }
+  /*for(uint8_t i = 0; i < cur_touch_count; i++){
+    Serial.print(curTouch[i].center);
+    Serial.print(' ');
+  }*/
+  uint8_t start_index = 0; //すでに移動したと判断したTouchは次のループで別のタッチに移動したと判断しないようにするため
+  for(uint8_t i = 0; i < prev_touch_count; i++){
+    bool touch_up = true;
+    for(uint8_t j = start_index; j < cur_touch_count; j++){
+      if(curTouch[j].bit_pattern & prevTouch[i].bit_pattern_prev){
+        curTouch[j].identifier = prevTouch[i].identifier;
+        curTouch[j].state = TOUCH_STATE::MOVING;
+        start_index += 1;
+        touch_up = false;
+        break;
+      }
+    }
+    if(touch_up){
+      //1個も近くにTouchが存在しなかったら、それは離されている
+      prevTouch[i].state = TOUCH_STATE::UP;
+    }
+    //Serial.print(touch[identifier].identifier);
+    //Serial.print(' ');
+  }
+  //新しいTouchを探す
+  for(uint8_t i = 0; i < cur_touch_count; i++){
+    if(curTouch[i].identifier == -1){
+      for(uint8_t identifier = 0; identifier < TOUCH_MAX; identifier++){ //使用されていないidentifierを探す
+        if(using_identifier[identifier] == false){
+          curTouch[i].identifier = identifier;
+          curTouch[i].state = TOUCH_STATE::DOWN;
+          using_identifier[identifier] = true;
+          break;
+        }
+      }
+    }
+  }
+  for(uint8_t i = 0; i < cur_touch_count; i++){
+    float x = mapFloat(curTouch[i].center, 0., 11., TOUCH_SCREEN_MIN_X, TOUCH_SCREEN_MAX_X);
+    if(curTouch[i].state == TOUCH_STATE::DOWN){
+      //タッチされた瞬間の処理
+      multiTouch.moveFingerTo(curTouch[i].identifier, x, TOUCH_SCREEN_Y);
+    } else if (curTouch[i].state == TOUCH_STATE::MOVING){
+      //長押ししている間の処理
+      multiTouch.moveFingerTo(curTouch[i].identifier, x, TOUCH_SCREEN_Y);
+    }
+  }
+  for(uint8_t i = 0; i < prev_touch_count; i++){
+    if(prevTouch[i].state == TOUCH_STATE::UP){
+      //離した瞬間の処理
+      multiTouch.releaseFinger(prevTouch[i].identifier);
+      using_identifier[prevTouch[i].identifier] = false; //identifierの解放
+    }
+  }
+  /*for(uint8_t i = 0; i < TOUCH_MAX; i++){
+    if(curTouch[i].identifier != -1){
+      for(uint8_t j = 0; j < TOUCH_MAX; j++){
+        if(prevTouch[j].identifier == curTouch[i].identifier && prevTouch[j].state != TOUCH_STATE::UP){
+          Serial.print(i);
+          Serial.print(' ');
+          Serial.print(curTouch[i].identifier);
+          Serial.print(' ');
+          Serial.print(curTouch[i].center);
+          Serial.print(' ');
+          Serial.print(curTouch[i].state);
+          Serial.print("    ");
+        }
+      }
+    }
+  }*/
+  /*for(uint8_t i=0; i < TOUCH_MAX; i++){
+    Serial.print(using_identifier[i]);
+    Serial.print(' ');
+  }*/
+  for(uint8_t i = 0; i < TOUCH_PAD_NUM; i++){
+    bool state = bool(current_touched & _BV(i));
     Serial.print(state);
   }
   Serial.print("\r\n");
 
+  memcpy(prevTouch, curTouch, sizeof(prevTouch));
+  for(uint8_t i = 0; i < TOUCH_MAX; i++){
+    curTouch[i].identifier = -1;
+    curTouch[i].side_start = 0;
+    curTouch[i].side_end = 0;
+    curTouch[i].center = 0;
+    curTouch[i].bit_pattern = 0;
+    curTouch[i].bit_pattern_prev = 0;
+    curTouch[i].state = TOUCH_STATE::UP;
+  }
+  prev_touch_count = cur_touch_count;
   bright(current_touched);
-  NKROKeyboard.send();
   delay(5);
 }
 
 void bright(uint16_t touched){
-  for (uint8_t touch_pos=0; touch_pos<12; touch_pos++){
-    for(uint8_t local_led_pos=0; local_led_pos<6; local_led_pos++){
+  for (uint8_t touch_pos = 0; touch_pos < TOUCH_PAD_NUM; touch_pos++){
+    for(uint8_t local_led_pos = 0; local_led_pos < 6; local_led_pos++){
       uint32_t color = getColor(touched & _BV(touch_pos));
       uint16_t global_led_pos = 1 + touch_pos * 6 + local_led_pos;
       if(global_led_pos == 1)
@@ -79,6 +234,10 @@ void bright(uint16_t touched){
   pixels.show();
 }
 
-uint32_t getColor(bool state){
+uint32_t getColor(uint16_t state){
   return state ? COLOR_TOUCH : COLOR_RELEASE;
+}
+
+float mapFloat(float value, float fromLow, float fromHigh, float toLow, float toHigh) {
+  return (value - fromLow) * (toHigh - toLow) / (fromHigh - fromLow) + toLow; 
 }

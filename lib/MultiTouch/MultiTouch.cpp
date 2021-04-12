@@ -189,6 +189,6 @@ void MultiTouch_::releaseFinger(uint8_t identifier) {
   send(identifier, 0, 0, 0);
 }
 
-MultiTouch_ MultiTouch;
+MultiTouch_ multiTouch;
 
 #endif
