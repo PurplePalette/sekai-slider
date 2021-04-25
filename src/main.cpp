@@ -1,3 +1,6 @@
+#define MAKE_TOUCH 1
+#define REVERSE 0
+
 #include <Adafruit_NeoPixel.h>
 #include "Adafruit_MPR121.h"
 #include "MultiTouch.h"
@@ -16,7 +19,7 @@ const uint8_t NEO_PIXEL_PIN = 9;
 const uint8_t NUM_PIXELS = 73;
 const uint32_t TOUCH_SCREEN_MIN_X = 1000;
 const uint32_t TOUCH_SCREEN_MAX_X = 9000;
-const uint32_t TOUCH_SCREEN_Y = 8000;
+const uint32_t TOUCH_SCREEN_Y = REVERSE ? 2000 : 8000;
 
 Adafruit_NeoPixel pixels(NUM_PIXELS, NEO_PIXEL_PIN, NEO_GRB + NEO_KHZ800);
 Adafruit_MPR121 cap = Adafruit_MPR121();
@@ -54,6 +57,7 @@ uint8_t prev_touch_count = 0;
 uint8_t cur_touch_count = 0;
 uint8_t is_touch_processing = 0;
 uint8_t using_identifier[TOUCH_MAX];
+void makeTouch();
 
 void setup()
 {
@@ -84,7 +88,7 @@ void setup()
     Serial.println("MPR121 not found, check wiring?");
     while (1);
   }
-  cap.setThresholds(2, 6);
+  cap.setThresholds(4, 6);
   cap.writeRegister(MPR121_DEBOUNCE, 0x25);
   cap.writeRegister(MPR121_CONFIG1, 0x30);
   cap.writeRegister(MPR121_CONFIG2, 0x20);
@@ -125,12 +129,8 @@ void loop()
       curTouch[cur_touch_count].bit_pattern_prev = ( (1 << prev_bit_num) - 1)  << max((curTouch[cur_touch_count].side_start - 1), 0);
       cur_touch_count += 1;
     }
-    //Serial.print(state);
   }
-  /*for(uint8_t i = 0; i < cur_touch_count; i++){
-    Serial.print(curTouch[i].center);
-    Serial.print(' ');
-  }*/
+
   uint8_t start_index = 0; //すでに移動したと判断したTouchは次のループで別のタッチに移動したと判断しないようにするため
   for(uint8_t i = 0; i < prev_touch_count; i++){
     bool touch_up = true;
@@ -144,11 +144,8 @@ void loop()
       }
     }
     if(touch_up){
-      //1個も近くにTouchが存在しなかったら、それは離されている
-      prevTouch[i].state = TOUCH_STATE::UP;
+      prevTouch[i].state = TOUCH_STATE::UP; //1個も近くにTouchが存在しなかったら、それは離されている
     }
-    //Serial.print(touch[identifier].identifier);
-    //Serial.print(' ');
   }
   //新しいTouchを探す
   for(uint8_t i = 0; i < cur_touch_count; i++){
@@ -163,50 +160,22 @@ void loop()
       }
     }
   }
-  for(uint8_t i = 0; i < cur_touch_count; i++){
-    float x = mapFloat(curTouch[i].center, 0., 11., TOUCH_SCREEN_MIN_X, TOUCH_SCREEN_MAX_X);
-    if(curTouch[i].state == TOUCH_STATE::DOWN){
-      //タッチされた瞬間の処理
-      multiTouch.moveFingerTo(curTouch[i].identifier, x, TOUCH_SCREEN_Y);
-    } else if (curTouch[i].state == TOUCH_STATE::MOVING){
-      //長押ししている間の処理
-      multiTouch.moveFingerTo(curTouch[i].identifier, x, TOUCH_SCREEN_Y);
-    }
-  }
-  for(uint8_t i = 0; i < prev_touch_count; i++){
-    if(prevTouch[i].state == TOUCH_STATE::UP){
-      //離した瞬間の処理
-      multiTouch.releaseFinger(prevTouch[i].identifier);
-      using_identifier[prevTouch[i].identifier] = false; //identifierの解放
-    }
-  }
-  /*for(uint8_t i = 0; i < TOUCH_MAX; i++){
-    if(curTouch[i].identifier != -1){
-      for(uint8_t j = 0; j < TOUCH_MAX; j++){
-        if(prevTouch[j].identifier == curTouch[i].identifier && prevTouch[j].state != TOUCH_STATE::UP){
-          Serial.print(i);
-          Serial.print(' ');
-          Serial.print(curTouch[i].identifier);
-          Serial.print(' ');
-          Serial.print(curTouch[i].center);
-          Serial.print(' ');
-          Serial.print(curTouch[i].state);
-          Serial.print("    ");
-        }
-      }
-    }
-  }*/
-  /*for(uint8_t i=0; i < TOUCH_MAX; i++){
-    Serial.print(using_identifier[i]);
-    Serial.print(' ');
-  }*/
+
+  //ここで実際にタッチする
+  if(MAKE_TOUCH)
+    makeTouch();
+  
+  //タッチ状況をシリアル出力
   for(uint8_t i = 0; i < TOUCH_PAD_NUM; i++){
     bool state = bool(current_touched & _BV(i));
     Serial.print(state);
   }
   Serial.print("\r\n");
 
+  //curTouchの中身をprevTouchにコピー
   memcpy(prevTouch, curTouch, sizeof(prevTouch));
+
+  //curTouchの中身を初期化
   for(uint8_t i = 0; i < TOUCH_MAX; i++){
     curTouch[i].identifier = -1;
     curTouch[i].side_start = 0;
@@ -217,8 +186,36 @@ void loop()
     curTouch[i].state = TOUCH_STATE::UP;
   }
   prev_touch_count = cur_touch_count;
+
+  //LEDテープを光らせる
   bright(current_touched);
   delay(5);
+}
+
+void makeTouch(){
+  for(uint8_t i = 0; i < cur_touch_count; i++){
+    float x = mapFloat(curTouch[i].center, 0., 11., TOUCH_SCREEN_MIN_X, TOUCH_SCREEN_MAX_X);
+    float y = TOUCH_SCREEN_Y;
+    if(REVERSE){
+      float tmp = x;
+      x = y;
+      y = tmp;
+    }
+    if(curTouch[i].state == TOUCH_STATE::DOWN){
+      //タッチされた瞬間の処理
+      multiTouch.moveFingerTo(curTouch[i].identifier, x, y);
+    } else if (curTouch[i].state == TOUCH_STATE::MOVING){
+      //長押ししている間の処理
+      multiTouch.moveFingerTo(curTouch[i].identifier, x, y);
+    }
+  }
+  for(uint8_t i = 0; i < prev_touch_count; i++){
+    if(prevTouch[i].state == TOUCH_STATE::UP){
+      //離した瞬間の処理
+      multiTouch.releaseFinger(prevTouch[i].identifier);
+      using_identifier[prevTouch[i].identifier] = false; //identifierの解放
+    }
+  }
 }
 
 void bright(uint16_t touched){
