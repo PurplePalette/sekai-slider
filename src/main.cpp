@@ -26,8 +26,8 @@ Adafruit_MPR121 cap = Adafruit_MPR121();
 
 //const uint32_t COLOR_TOUCH = pixels.Color(85, 125, 255);  // AQUA
 //const uint32_t COLOR_RELEASE = pixels.Color(153, 0, 255); // VIOLET
-const uint32_t COLOR_TOUCH = pixels.Color(35, 75, 105);  // AQUA
-const uint32_t COLOR_RELEASE = pixels.Color(50, 0, 50); // VIOLET
+const uint32_t COLOR_TOUCH = pixels.Color(17, 37, 50);  // AQUA
+const uint32_t COLOR_RELEASE = pixels.Color(12, 0, 12); // VIOLET
 
 void bright(uint16_t touched);
 uint32_t getColor(uint16_t state);
