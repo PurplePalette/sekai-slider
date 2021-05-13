@@ -47,6 +47,15 @@ struct Touch_ {
   uint16_t bit_pattern;
   uint16_t bit_pattern_prev;
   TOUCH_STATE state; //0:touch down 1:moving 2:touch up
+  Touch_(){
+    identifier = -1;
+    side_start = 0;
+    side_end = 0;
+    center = 0;
+    bit_pattern = 0;
+    bit_pattern_prev = 0;
+    state = TOUCH_STATE::UP;
+  }
 };
 typedef struct Touch_ Touch;
 
@@ -61,22 +70,6 @@ void makeTouch();
 
 void setup()
 {
-  for(uint8_t i = 0; i < TOUCH_MAX; i++){
-    prevTouch[i].identifier = -1;
-    prevTouch[i].side_start = 0;
-    prevTouch[i].side_end = 0;
-    prevTouch[i].center = 0;
-    prevTouch[i].bit_pattern = 0;
-    prevTouch[i].bit_pattern_prev = 0;
-    prevTouch[i].state = TOUCH_STATE::UP;
-    curTouch[i].identifier = -1;
-    curTouch[i].side_start = 0;
-    curTouch[i].side_end = 0;
-    curTouch[i].center = 0;
-    curTouch[i].bit_pattern = 0;
-    curTouch[i].bit_pattern_prev = 0;
-    curTouch[i].state = TOUCH_STATE::UP;
-  }
   Serial.begin(SERIAL_BAUD);
   Serial.println("Adafruit MPR121 Capacitive Touch sensor test");
 
@@ -107,7 +100,6 @@ void loop()
       is_touch_processing = 1;
       curTouch[cur_touch_count].side_start = i;
       curTouch[cur_touch_count].side_end = i;
-      is_touch_processing = 1;
     } else if(state && is_touch_processing){
       curTouch[cur_touch_count].side_end = i;
     } else if( (!state && is_touch_processing) || (state && i == (TOUCH_PAD_NUM-1)) ){
