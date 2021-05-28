@@ -17,6 +17,10 @@ https://www.youtube.com/watch?v=6ZV3q7aEVVU
     - 配線
     - ユニバーサル基板
  
+ # 回路図
+ ![pjsekai-slidar](https://user-images.githubusercontent.com/16555696/119915029-8c9f8500-bf9c-11eb-86b0-d8bb7d930f85.png)
+
+ 
  # ビルド環境
  Platform IOでビルド
  
