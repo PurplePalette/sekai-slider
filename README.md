@@ -3,17 +3,19 @@
 https://www.youtube.com/watch?v=6ZV3q7aEVVU
 
 # 使用機器
-- Arduino Pro Micro 3.3V x1
-- MPR121(静電容量センサ) x1
+- Arduino Pro Micro 5V x1
+- Adafruit MPR121(静電容量センサ) x1
 - WS2812B(LEDテープ) x1
 - 3mm乳白色アクリル板 x1
 - 3mm透明アクリル板 x1
 - 静電容量式センサ用透明フィルム ３枚セット  x1
 - その他
-    - ACアダプタ
+    - ACアダプタ(LEDテープの電源用)
+    - DCジャック
     - Si8640BT(デジタルアイソレータ)
-      - 制御電源とLEDテープの電源を分けるため
+      - Arduinoの制御電源とLEDテープの電源を分けるため
     - 配線
+    - ユニバーサル基板
  
  # ビルド環境
  Platform IOでビルド
