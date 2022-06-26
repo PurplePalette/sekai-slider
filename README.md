@@ -1,29 +1,33 @@
 # Project Sekai Slidar
-プロジェクトセカイ　カラフルステージ！をアーケード風にプレイするためのコントローラーです。  
+Arcade Style Controller For Project Sekai Colorful Stage!  
+プロジェクトセカイ カラフルステージ！をアーケード風にプレイするためのコントローラー  
 https://www.youtube.com/watch?v=6ZV3q7aEVVU
 
-# 使用機器
-- Arduino Pro Micro 5V x1
-- Adafruit MPR121(静電容量センサ) x1
-- WS2812B(LEDテープ) x1
-- 3mm乳白色アクリル板 x1
-- 3mm透明アクリル板 x1
-- 静電容量式センサ用透明フィルム ３枚セット  x1
-- その他
-    - ACアダプタ(LEDテープの電源用)
-    - DCジャック
-    - Si8640BT(デジタルアイソレータ)
-      - Arduinoの制御電源とLEDテープの電源を分けるため
-    - 配線
-    - ユニバーサル基板
- 
- # 回路図
- ![pjsekai-slidar](https://user-images.githubusercontent.com/16555696/119915029-8c9f8500-bf9c-11eb-86b0-d8bb7d930f85.png)
+<img width="360" alt="picture" src="https://user-images.githubusercontent.com/16555696/175815366-ba8c9e83-4401-4b38-926a-aee3e0e676c5.png">
 
+## List of Hardware/部品
+|Part|Qty||
+|:----|:----|:----|
+|Arduino Pro Micro 5V|1|Microcontroller|
+|Adafruit MPR121|1|Capacitance sensor|
+|WS2812B|1|LED Tape|
+|3mm Milky white Acrylic |1| |
+|3mm Transparent Acrylic|1| |
+|[Transparent film for capacitive sensors](https://www.amazon.co.jp/dp/B015R4RYL6)|1| |
+|AC Adaptor|1|For power supply of LED tape|
+|Power connector| |For AC adaptor to LED Tape|
+|Si8640BT|1|Digital Isolator to isolate the LED power supply from the control power supply. This is optinal.|
+|Wire| | |
+|Stripboard or Breadboard| |Recommend stripboard|
  
- # ビルド環境
- Platform IOでビルド
+## Schematic/回路図
+![pjsekai-slidar](https://user-images.githubusercontent.com/16555696/175814429-3f9bb644-7874-4d54-a7de-323d1facfc80.png)
  
- # 仕組み
- Androidに接続すると、USB HID マルチタッチデバイスとして認識される。  
+## Build/ビルド
+Platform IOでビルド  
+Build with Platform IO
+ 
+## How it works/仕組み
+Androidに接続すると、USB HID マルチタッチデバイスとして認識される。  
+When connected to Android, it is recognized as a USB HID multi-touch device.  
  
