@@ -1,4 +1,4 @@
-# Project Sekai Slidr
+# Project Sekai Slider
 Arcade Style Controller For Project Sekai Colorful Stage!  
 プロジェクトセカイ カラフルステージ！をアーケード風にプレイするためのコントローラー  
 https://www.youtube.com/watch?v=6ZV3q7aEVVU
